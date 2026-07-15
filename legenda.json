@@ -1,0 +1,222 @@
+[
+ {
+  "cd": "IAR",
+  "cor": "#550000",
+  "predominancia": "natural",
+  "prioridade": "Extremamente Alta",
+  "cd_apcac_a": "A",
+  "risco": "alto risco",
+  "rotulo": "Predominância natural, importância hidro. extremamente alta, alto risco",
+  "acao": "Comando e Controle",
+  "risco_predominante": "Risco de Desmatamento"
+ },
+ {
+  "cd": "IBR",
+  "cor": "#800000",
+  "predominancia": "natural",
+  "prioridade": "Muito Alta",
+  "cd_apcac_a": "B",
+  "risco": "alto risco",
+  "rotulo": "Predominância natural, importância hidrológica muito alta, alto risco",
+  "acao": "Comando e Controle",
+  "risco_predominante": "Risco de Desmatamento"
+ },
+ {
+  "cd": "ICR",
+  "cor": "#d40000",
+  "predominancia": "natural",
+  "prioridade": "Alta",
+  "cd_apcac_a": "C",
+  "risco": "alto risco",
+  "rotulo": "Predominância natural, importância hidrológica alta, alto risco",
+  "acao": "Comando e Controle",
+  "risco_predominante": "Risco de Desmatamento"
+ },
+ {
+  "cd": "IXR",
+  "cor": "#ff8080",
+  "predominancia": "natural",
+  "prioridade": "Regular",
+  "cd_apcac_a": "X",
+  "risco": "alto risco",
+  "rotulo": "Predominância natural, importância hidrológica regular, alto risco",
+  "acao": "Comando e Controle",
+  "risco_predominante": "Risco de Desmatamento"
+ },
+ {
+  "cd": "IA",
+  "cor": "#1c4942",
+  "predominancia": "natural",
+  "prioridade": "Extremamente Alta",
+  "cd_apcac_a": "A",
+  "risco": null,
+  "rotulo": "Predominância natural, importância hidrológica extremamente alta",
+  "acao": "Proteção",
+  "risco_predominante": "Risco de Desmatamento"
+ },
+ {
+  "cd": "IB",
+  "cor": "#248248",
+  "predominancia": "natural",
+  "prioridade": "Muito Alta",
+  "cd_apcac_a": "B",
+  "risco": null,
+  "rotulo": "Predominância natural, importância hidrológica muito alta",
+  "acao": "Proteção",
+  "risco_predominante": "Risco de Desmatamento"
+ },
+ {
+  "cd": "IC",
+  "cor": "#51a24c",
+  "predominancia": "natural",
+  "prioridade": "Alta",
+  "cd_apcac_a": "C",
+  "risco": null,
+  "rotulo": "Predominância natural, importância hidrológica alta",
+  "acao": "Proteção",
+  "risco_predominante": "Risco de Desmatamento"
+ },
+ {
+  "cd": "IX",
+  "cor": "#a8c8a5",
+  "predominancia": "natural",
+  "prioridade": "Regular",
+  "cd_apcac_a": "X",
+  "risco": null,
+  "rotulo": "Predominância natural, importância hidrológica regular",
+  "acao": "Proteção",
+  "risco_predominante": "Risco de Desmatamento"
+ },
+ {
+  "cd": "IIAR",
+  "cor": "#440055",
+  "predominancia": "antrópica",
+  "prioridade": "Extremamente Alta",
+  "cd_apcac_a": "A",
+  "risco": "alto risco",
+  "rotulo": "Predominância antrópica, importância hidro. extremamente alta, alto risco",
+  "acao": "Restauração Ecológica",
+  "risco_predominante": "Risco de Degradação do Solo"
+ },
+ {
+  "cd": "IIBR",
+  "cor": "#8800aa",
+  "predominancia": "antrópica",
+  "prioridade": "Muito Alta",
+  "cd_apcac_a": "B",
+  "risco": "alto risco",
+  "rotulo": "Predominância antrópica, importância hidrológica muito alta, alto risco",
+  "acao": "Restauração Ecológica",
+  "risco_predominante": "Risco de Degradação do Solo"
+ },
+ {
+  "cd": "IICR",
+  "cor": "#e05cff",
+  "predominancia": "antrópica",
+  "prioridade": "Alta",
+  "cd_apcac_a": "C",
+  "risco": "alto risco",
+  "rotulo": "Predominância antrópica, importância hidrológica alta, alto risco",
+  "acao": "Restauração Ecológica",
+  "risco_predominante": "Risco de Degradação do Solo"
+ },
+ {
+  "cd": "IIXR",
+  "cor": "#d4abde",
+  "predominancia": "antrópica",
+  "prioridade": "Regular",
+  "cd_apcac_a": "X",
+  "risco": "alto risco",
+  "rotulo": "Predominância antrópica, importância hidrológica regular, alto risco",
+  "acao": "Restauração Ecológica",
+  "risco_predominante": "Risco de Degradação do Solo"
+ },
+ {
+  "cd": "IIA",
+  "cor": "#1f3a70",
+  "predominancia": "antrópica",
+  "prioridade": "Extremamente Alta",
+  "cd_apcac_a": "A",
+  "risco": null,
+  "rotulo": "Predominância antrópica, importância hidrológica extremamente alta",
+  "acao": "Restauração Ecológica",
+  "risco_predominante": "Risco Padrão"
+ },
+ {
+  "cd": "IIB",
+  "cor": "#376ea0",
+  "predominancia": "antrópica",
+  "prioridade": "Muito Alta",
+  "cd_apcac_a": "B",
+  "risco": null,
+  "rotulo": "Predominância antrópica, importância hidrológica muito alta",
+  "acao": "Restauração Ecológica",
+  "risco_predominante": "Risco Padrão"
+ },
+ {
+  "cd": "IIC",
+  "cor": "#458ea0",
+  "predominancia": "antrópica",
+  "prioridade": "Alta",
+  "cd_apcac_a": "C",
+  "risco": null,
+  "rotulo": "Predominância antrópica, importância hidrológica alta",
+  "acao": "Restauração Ecológica",
+  "risco_predominante": "Risco Padrão"
+ },
+ {
+  "cd": "IIX",
+  "cor": "#8ec4c4",
+  "predominancia": "antrópica",
+  "prioridade": "Regular",
+  "cd_apcac_a": "X",
+  "risco": null,
+  "rotulo": "Predominância antrópica, importância hidrológica regular",
+  "acao": "Restauração Ecológica",
+  "risco_predominante": "Risco Padrão"
+ },
+ {
+  "cd": "IIAC",
+  "cor": "#ff9400",
+  "predominancia": "antrópica",
+  "prioridade": "Extremamente Alta",
+  "cd_apcac_a": "A",
+  "risco": "risco de aridez",
+  "rotulo": "Predominância antrópica, importância hidrológica extremamente alta, risco de aridez",
+  "acao": "Manejo do Solo e Revezamento Hídrico",
+  "risco_predominante": "Risco de Aridez"
+ },
+ {
+  "cd": "IIBC",
+  "cor": "#ffa700",
+  "predominancia": "antrópica",
+  "prioridade": "Muito Alta",
+  "cd_apcac_a": "B",
+  "risco": "risco de aridez",
+  "rotulo": "Predominância antrópica, importância hidrológica muito alta, risco de aridez",
+  "acao": "Manejo do Solo e Revezamento Hídrico",
+  "risco_predominante": "Risco de Aridez"
+ },
+ {
+  "cd": "IICC",
+  "cor": "#ffba00",
+  "predominancia": "antrópica",
+  "prioridade": "Alta",
+  "cd_apcac_a": "C",
+  "risco": "risco de aridez",
+  "rotulo": "Predominância antrópica, importância hidrológica alta, risco de aridez",
+  "acao": "Manejo do Solo e Revezamento Hídrico",
+  "risco_predominante": "Risco de Aridez"
+ },
+ {
+  "cd": "XC",
+  "cor": "#ffdd81",
+  "predominancia": "mista",
+  "prioridade": "Regular",
+  "cd_apcac_a": "X",
+  "risco": "risco de aridez",
+  "rotulo": "Predominância mista, importância hidrológica regular, risco de aridez",
+  "acao": "Conjunto de Ações Diversas",
+  "risco_predominante": "Risco de Aridez"
+ }
+]

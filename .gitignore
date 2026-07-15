@@ -1,0 +1,7 @@
+# nada de Git LFS: o GitHub Pages não serve arquivos LFS,
+# e os .pmtiles precisam ser servidos como arquivos normais
+# para o range request funcionar.
+*.mbtiles
+*.gpkg
+*.tif
+.DS_Store

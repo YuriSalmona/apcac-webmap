@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>APCAC — Cerrado</title>
+<link href="lib/maplibre-gl.css" rel="stylesheet">
+<script src="lib/maplibre-gl.js"></script>
+<script src="lib/pmtiles.js"></script>
+<style>
+  /* overflow:hidden é obrigatório: um popup perto da borda inferior estende a
+     área rolável e, como #mapa é absolute (não fixed), o mapa sai da tela junto
+     com a rolagem — escala e atribuição parecem "vazar" para fora do mapa. */
+  html,body{margin:0;height:100%;overflow:hidden;font:13px/1.45 system-ui,sans-serif}
+  #mapa{position:fixed;inset:0}
+  .painel{position:absolute;top:10px;left:10px;z-index:1;background:#fff;
+    border-radius:8px;box-shadow:0 1px 6px rgba(0,0,0,.3);padding:10px 12px;width:342px}
+  .painel h1{margin:0 0 8px;line-height:1.25}
+  .t1{display:block;font-size:12.5px;font-weight:600;white-space:nowrap}
+  .t2{display:block;font-size:15px;font-weight:700;letter-spacing:.06em;color:#1c4942}
+  .secao{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+    color:#666;margin:0 0 4px}
+  .escopos{display:flex;gap:4px;margin-bottom:8px}
+  .escopos button{flex:1;padding:5px 4px;font:inherit;font-size:11px;cursor:pointer;
+    border:1px solid #bbb;background:#f4f4f4;border-radius:5px}
+  .escopos button.on{background:#1c4942;color:#fff;border-color:#1c4942}
+  .nota{color:#555;font-size:11px;margin:0 0 8px}
+  .leg{max-height:40vh;overflow:auto}
+  .grupo{margin-bottom:8px}
+  /* flex-start + margin no swatch: o cabeçalho agora quebra em 2 linhas
+     ("Manejo do Solo e Revezamento Hídrico / Risco de Aridez") e com
+     align-items:center a rampa ficaria centrada verticalmente no bloco todo. */
+  .grupo-cab{display:flex;align-items:flex-start;gap:6px;font-size:11px;font-weight:700;
+    color:#333;margin-bottom:2px;line-height:1.35}
+  .rampa{width:14px;height:11px;flex:none;border-radius:2px;
+    border:1px solid rgba(0,0,0,.25);margin-top:2px}
+  .risco-pred{font-weight:400;color:#666;white-space:nowrap}
+  .grupo ul{margin:0;padding:0 0 0 20px;list-style:none}
+  .leg li{display:flex;align-items:center;gap:6px;padding:1px 0;font-size:11px}
+  .sw{width:12px;height:12px;border:1px solid #999;flex:none;border-radius:2px}
+  #estado{position:absolute;bottom:10px;left:10px;z-index:1;background:#fff;padding:4px 8px;
+    border-radius:5px;box-shadow:0 1px 4px rgba(0,0,0,.3);font-size:11px}
+  #erro{position:absolute;top:10px;right:52px;z-index:2;background:#b00020;color:#fff;
+    padding:8px 10px;border-radius:6px;max-width:340px;display:none;font-size:12px;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<div id="mapa"></div>
+<div class="painel">
+  <h1>
+    <span class="t1">Áreas Prioritárias da Conservação de Água do Cerrado</span>
+    <span class="t2">APCAC</span>
+  </h1>
+  <p class="secao">Escalas de Análise e Gestão</p>
+  <div class="escopos">
+    <button data-e="cerrado" class="on">Cerrado</button>
+    <button data-e="rhi">Região Hidrog.</button>
+    <button data-e="uph">UPH</button>
+  </div>
+  <p class="nota" id="nota">carregando…</p>
+  <p class="secao">Mapa de Fundo</p>
+  <div class="escopos" id="fundos">
+    <button data-f="claro" class="on">Claro</button>
+    <button data-f="sat">Satélite</button>
+  </div>
+  <p class="secao">Ação Prioritária / Risco Predominante</p>
+  <div class="leg" id="leg"></div>
+</div>
+<div id="estado">iniciando…</div>
+<div id="erro"></div>
+
+<script>
+const BASE = location.origin + location.pathname.replace(/[^/]*$/, "");
+const NOTAS = {
+  cerrado: "Importância hidrológica ranqueada contra o Cerrado inteiro. Limiares globais — as cores são comparáveis entre regiões distantes.",
+  rhi:     "Ranqueada dentro de cada Região Hidrográfica (13 unidades). Limiares relativos a cada região.",
+  uph:     "Ranqueada dentro de cada Unidade de Planejamento Hídrico (456 unidades). Limiares relativos a cada UPH."
+};
+const ZOOM_DETALHE = 10;
+const OPACIDADE = 0.7;            // 30% de transparência sobre o mapa de fundo
+// As classes de prioridade Regular não são apresentadas — EXCETO a XC
+// ("Conjunto de Ações Diversas"), que é Regular mas foi mantida a pedido.
+// O filtro é POR ESCOPO: uma microbacia pode ser Regular no Cerrado e Alta na sua
+// UPH. Do dado só saíram as ocultas nos três escopos (nunca apareceriam);
+// as demais continuam nos tiles e são escondidas conforme o escopo ativo.
+const OCULTAS = ["IX", "IXR", "IIX", "IIXR"];
+let escopo = "cerrado", legenda = [];
+
+const elErro = document.getElementById("erro");
+function erro(m) {
+  elErro.style.display = "block";
+  elErro.textContent = String(m);
+  console.error(m);
+}
+window.addEventListener("error", e => erro("Erro de script: " + e.message));
+
+const estado = m => document.getElementById("estado").textContent = m;
+
+// ---- IMPORTANTE: tudo abaixo é registrado de forma SÍNCRONA. -----------------
+// Registrar mapa.on("load") depois de um await é uma corrida: em navegador
+// rápido o estilo carrega antes do await resolver, o evento passa, e as
+// camadas nunca são adicionadas (tela vazia, sem erro nenhum).
+maplibregl.addProtocol("pmtiles", new pmtiles.Protocol().tile);
+
+// Mapas de fundo (as únicas dependências externas da página: se o CDN falhar,
+// o fundo cinza continua e os dados renderizam do mesmo jeito).
+// Atenção: o Esri World Imagery usa a ordem {z}/{y}/{x} — linha antes da coluna,
+// ao contrário do padrão XYZ. Trocar isso devolve tiles do lugar errado.
+const mapa = new maplibregl.Map({
+  container: "mapa",
+  style: {
+    version: 8,
+    sources: {
+      s_claro: {
+        type: "raster", tileSize: 256, maxzoom: 19,
+        tiles: ["https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png",
+                "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png",
+                "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png"],
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      },
+      s_sat: {
+        type: "raster", tileSize: 256, maxzoom: 19,
+        tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+        attribution: 'Imagens &copy; <a href="https://www.esri.com/">Esri</a>, Maxar, Earthstar Geographics'
+      }
+    },
+    layers: [
+      { id: "cor_base", type: "background", paint: { "background-color": "#eceff1" } },
+      { id: "fundo_claro", type: "raster", source: "s_claro" },
+      { id: "fundo_sat", type: "raster", source: "s_sat", layout: { visibility: "none" } }
+    ]
+  },
+  center: [-51.03, -13.95], zoom: 4, minZoom: 3, maxZoom: 13
+});
+mapa.addControl(new maplibregl.NavigationControl(), "top-right");
+mapa.addControl(new maplibregl.ScaleControl());
+mapa.on("error", e => erro("MapLibre: " + (e.error && e.error.message ? e.error.message : e.type)));
+
+// dispara o fetch já, mas o handler de load é registrado sem esperar por ele
+const pLegenda = fetch(BASE + "legenda.json").then(r => {
+  if (!r.ok) throw new Error("legenda.json -> HTTP " + r.status);
+  return r.json();
+});
+
+function exprCor(esc) {
+  const e = ["match", ["get", "cd_" + esc]];
+  for (const c of legenda) e.push(c.cd, c.cor);
+  e.push("#cccccc");
+  return e;
+}
+
+// esconde as Regular do escopo ativo (o raster de cada escopo já vem sem as suas)
+const filtroEscopo = esc =>
+  ["!", ["in", ["get", "cd_" + esc], ["literal", OCULTAS]]];
+
+function aplicaEscopo(esc) {
+  escopo = esc;
+  for (const s of ["cerrado", "rhi", "uph"])
+    mapa.setLayoutProperty("r_" + s, "visibility", s === esc ? "visible" : "none");
+  mapa.setPaintProperty("detalhe", "fill-color", exprCor(esc));
+  mapa.setFilter("detalhe", filtroEscopo(esc));
+  mapa.setFilter("detalhe_borda", filtroEscopo(esc));
+  document.getElementById("nota").textContent = NOTAS[esc];
+  // [data-e] é obrigatório: o seletor de fundo reusa a classe .escopos e sem
+  // isso os botões de fundo seriam desmarcados a cada troca de escopo.
+  document.querySelectorAll(".escopos button[data-e]")
+    .forEach(b => b.classList.toggle("on", b.dataset.e === esc));
+}
+
+function mostraEstado() {
+  const z = mapa.getZoom();
+  estado(`zoom ${z.toFixed(1)} — ${z < ZOOM_DETALHE ? "visão geral (raster)" : "detalhe (vetorial, clicável)"}`);
+}
+
+mapa.on("load", async () => {
+  estado("carregando legenda…");
+  try {
+    legenda = await pLegenda;
+  } catch (e) { return erro("Falha ao carregar a legenda: " + e.message); }
+
+  // agrupa por Ação Prioritária + Risco Predominante (a mesma ação pode aparecer
+  // em dois grupos: Restauração Ecológica se divide em degradação do solo e padrão),
+  // preservando a ordem definida no legenda.json
+  const grupos = [];
+  // grupos que ficarem sem classe visível somem da legenda
+  for (const c of legenda.filter(c => !OCULTAS.includes(c.cd))) {
+    const chave = c.acao + " / " + c.risco_predominante;
+    let g = grupos.find(x => x.chave === chave);
+    if (!g) grupos.push(g = { chave, acao: c.acao, risco: c.risco_predominante, itens: [] });
+    g.itens.push(c);
+  }
+  document.getElementById("leg").innerHTML = grupos.map(g => {
+    const cores = g.itens.map(c => c.cor);
+    // amostra da rampa do grupo: do tom mais escuro ao mais claro
+    const rampa = cores.length > 1
+      ? `linear-gradient(90deg, ${cores.join(",")})` : cores[0];
+    return `<div class="grupo">
+      <div class="grupo-cab"><span class="rampa" style="background:${rampa}"></span>
+        <span>${g.acao} <span class="risco-pred">/ ${g.risco}</span></span></div>
+      <ul>${g.itens.map(c =>
+        `<li><span class="sw" style="background:${c.cor}"></span>${c.prioridade}</li>`).join("")}</ul>
+    </div>`;
+  }).join("");
+
+  try {
+    for (const s of ["cerrado", "rhi", "uph"]) {
+      mapa.addSource("s_" + s, { type: "raster", url: `pmtiles://${BASE}${s}_raster.pmtiles`, tileSize: 256 });
+      mapa.addLayer({
+        id: "r_" + s, type: "raster", source: "s_" + s, maxzoom: ZOOM_DETALHE,
+        layout: { visibility: s === "cerrado" ? "visible" : "none" },
+        paint: { "raster-resampling": "nearest", "raster-opacity": OPACIDADE }
+      });
+    }
+    mapa.addSource("s_det", { type: "vector", url: `pmtiles://${BASE}apcac_detalhe.pmtiles` });
+    mapa.addLayer({
+      id: "detalhe", type: "fill", source: "s_det", "source-layer": "apcac", minzoom: ZOOM_DETALHE,
+      filter: filtroEscopo("cerrado"),
+      paint: { "fill-color": exprCor("cerrado"), "fill-opacity": OPACIDADE }
+    });
+    // Contorno em camada própria: com fill-opacity, o fill-outline-color também
+    // fica translúcido e some; uma line separada mantém o limite legível.
+    mapa.addLayer({
+      id: "detalhe_borda", type: "line", source: "s_det", "source-layer": "apcac",
+      minzoom: ZOOM_DETALHE, filter: filtroEscopo("cerrado"),
+      paint: { "line-color": "rgba(0,0,0,.25)", "line-width": 0.4 }
+    });
+  } catch (e) { return erro("Falha ao montar as camadas: " + e.message); }
+
+  aplicaEscopo("cerrado");
+  mostraEstado();
+
+  mapa.on("click", "detalhe", ev => {
+    const p = ev.features[0].properties;
+    const cls = legenda.find(c => c.cd === p["cd_" + escopo]) || {};
+    new maplibregl.Popup({ maxWidth: "300px" }).setLngLat(ev.lngLat).setHTML(
+      `<b>Microbacia ${p.cobacia}</b><br>
+       Área: ${Number(p.nuareacont).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km²
+       <hr style="margin:5px 0">
+       <span style="display:inline-block;width:10px;height:10px;background:${cls.cor};border:1px solid #999"></span>
+       <b>${p["cd_" + escopo]}</b> — ${cls.rotulo || ""}<br>
+       Ação prioritária: <b>${cls.acao || "—"}</b><br>
+       Risco predominante: <b>${cls.risco_predominante || "—"}</b>
+       <hr style="margin:5px 0">
+       <small style="color:#666">Cerrado: ${p.cd_cerrado} · RHI: ${p.cd_rhi} · UPH: ${p.cd_uph}</small>`
+    ).addTo(mapa);
+  });
+  mapa.on("mouseenter", "detalhe", () => mapa.getCanvas().style.cursor = "pointer");
+  mapa.on("mouseleave", "detalhe", () => mapa.getCanvas().style.cursor = "");
+});
+
+function aplicaFundo(f) {
+  mapa.setLayoutProperty("fundo_claro", "visibility", f === "claro" ? "visible" : "none");
+  mapa.setLayoutProperty("fundo_sat", "visibility", f === "sat" ? "visible" : "none");
+  document.querySelectorAll("#fundos button")
+    .forEach(b => b.classList.toggle("on", b.dataset.f === f));
+}
+
+mapa.on("zoom", mostraEstado);
+document.querySelectorAll(".escopos button[data-e]")
+  .forEach(b => b.onclick = () => { if (legenda.length) aplicaEscopo(b.dataset.e); });
+document.querySelectorAll("#fundos button")
+  .forEach(b => b.onclick = () => aplicaFundo(b.dataset.f));
+</script>
+</body>
+</html>
