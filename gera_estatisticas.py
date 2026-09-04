@@ -36,6 +36,59 @@ nome_rhi = {int(cd): nm for cd, nm in r.execute("select rhi_cd, rhi_nm from snir
 nome_uph = {int(cd): nm for cd, nm in
             u.execute("select cdUPH, coalesce(nullif(nmUPH,''), sgUPH) from snirh_uph")}
 
+# --- normalizacao dos nomes de territorio (04/09/2026) --------------------
+# A base do SNIRH traz nomes truncados (campo curto) e em CAIXA ALTA sem
+# acentuacao. Normalizamos aqui para que uma regeneracao nao desfaca a
+# correcao publicada. Grafias confirmadas por Yuri Salmona.
+import re as _re
+_UF = {'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA',
+       'PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'}
+_MANTEM = _UF | {'SF'}                      # SF = Sao Francisco
+_CONECTORES = {'de','do','da','das','dos','e','a','o','em','no','na','ao','aos'}
+_ACENTOS = {'Medio':'Médio','Guacu':'Guaçu','Sao':'São','Jose':'José',
+            'Paranaiba':'Paranaíba','Jatai':'Jataí','Parnaiba':'Parnaíba',
+            'Piaui':'Piauí','Goias':'Goiás','Ceara':'Ceará'}
+_CORRECOES = {                              # nomes truncados na base -> grafia correta
+    842:'Médio Paranapanema (PR)',
+    904:'Difusas da Barragem de Boa Esperança',
+    905:'Difusas do Alto Parnaíba',
+    906:'Difusas do Médio Parnaíba',
+    1020:'Médio e Baixo Gorutuba',
+    1021:'Médio Verde Grande',               # 1021 e 1022 sao fragmentos da MESMA UPH
+    1022:'Médio Verde Grande',
+    1023:'Margem Esquerda do Lago de Sobradinho',
+}
+
+def _caixa_titulo(nome):
+    nome = _re.sub(r'\s+', ' ', nome).strip()
+    saida, primeira = [], True
+    for p in _re.split(r'([ /\-])', nome):
+        if p in (' ', '/', '-') or p == '':
+            saida.append(p); continue
+        nucleo = _re.sub(r'[^A-Za-zÀ-ÿ]', '', p)
+        sigla = (nucleo.isupper() and len(nucleo) <= 4
+                 and not _re.search(r'[AEIOUÁÉÍÓÚÂÊÔÃÕÀ]', nucleo))   # PCJ, SF...
+        if (nucleo.upper() in _MANTEM and len(nucleo) <= 3) or sigla:
+            saida.append(p.upper())
+        elif not primeira and nucleo.lower() in _CONECTORES:
+            saida.append(p.lower())
+        else:
+            saida.append(p[:1].upper() + p[1:].lower())
+        primeira = False
+    return ''.join(saida)
+
+def normaliza_nome(escala, cod, nome):
+    if escala == 'uph' and int(cod) in _CORRECOES:
+        return _CORRECOES[int(cod)]
+    arrumado = _caixa_titulo(nome)
+    return _re.sub('[A-Za-zÀ-ÿ]+',
+                   lambda m: _ACENTOS.get(m.group(0), m.group(0)), arrumado)
+
+nome_rhi = {cd: normaliza_nome('rhi', cd, nm) for cd, nm in nome_rhi.items()}
+nome_uph = {cd: normaliza_nome('uph', cd, nm) for cd, nm in nome_uph.items()}
+# -------------------------------------------------------------------------
+
+
 L("calculando área geodésica de cada microbacia recortada…")
 linhas = []
 for i, (fid, geom, cc, cr, cu, iu, ir) in enumerate(b.execute(
