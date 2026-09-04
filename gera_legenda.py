@@ -27,7 +27,7 @@ GRUPOS = [
     ("Proteção",                             "Risco de Desmatamento",        ["IA", "IB", "IC", "IX"]),
     ("Restauração Ecológica",                "Risco de Degradação do Solo",  ["IIAR", "IIBR", "IICR", "IIXR"]),
     ("Restauração Ecológica",                "Risco Padrão",                 ["IIA", "IIB", "IIC", "IIX"]),
-    ("Manejo do Solo e Revezamento Hídrico", "Risco de Aridez",              ["IIAC", "IIBC", "IICC"]),
+    ("Manejo do Solo e Reservação Hídrica", "Risco de Aridez",              ["IIAC", "IIBC", "IICC"]),
     ("Conjunto de Ações Diversas",           "Risco de Aridez",              ["XC"]),
 ]
 

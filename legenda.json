@@ -183,7 +183,7 @@
   "cd_apcac_a": "A",
   "risco": "risco de aridez",
   "rotulo": "Predominância antrópica, importância hidrológica extremamente alta, risco de aridez",
-  "acao": "Manejo do Solo e Revezamento Hídrico",
+  "acao": "Manejo do Solo e Reservação Hídrica",
   "risco_predominante": "Risco de Aridez"
  },
  {
@@ -194,7 +194,7 @@
   "cd_apcac_a": "B",
   "risco": "risco de aridez",
   "rotulo": "Predominância antrópica, importância hidrológica muito alta, risco de aridez",
-  "acao": "Manejo do Solo e Revezamento Hídrico",
+  "acao": "Manejo do Solo e Reservação Hídrica",
   "risco_predominante": "Risco de Aridez"
  },
  {
@@ -205,7 +205,7 @@
   "cd_apcac_a": "C",
   "risco": "risco de aridez",
   "rotulo": "Predominância antrópica, importância hidrológica alta, risco de aridez",
-  "acao": "Manejo do Solo e Revezamento Hídrico",
+  "acao": "Manejo do Solo e Reservação Hídrica",
   "risco_predominante": "Risco de Aridez"
  },
  {
