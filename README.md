@@ -1,6 +1,6 @@
-# APCAC — Áreas Prioritárias da Conservação de Água do Cerrado
+# APIAC — Áreas Prioritárias da Conservação de Água do Cerrado
 
-Webmap estático das APCAC. Instituto Cerrados, solicitação IC26017 (apresentação MMA).
+Webmap estático das APIAC. Instituto Cerrados, solicitação IC26017 (apresentação MMA).
 
 ## Como funciona
 
