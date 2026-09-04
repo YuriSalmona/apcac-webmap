@@ -162,7 +162,7 @@ const OCULTAS = ["IX", "IXR", "IIX", "IIXR"];
 // As classes acima não são pintadas no mapa mas ocupam ~27% do território.
 // No dashboard elas viram UMA categoria só, sem preenchimento e sem nome —
 // para os gráficos somarem 100% sem sugerir uma ação prioritária que não existe.
-const SEM_NOME = { cor: "none", contorno: "#9e9e9e", rotulo: "" };
+const SEM_NOME = { cor: "none", contorno: "#9e9e9e", rotulo: "Regular sem risco de aridez" };
 
 // Limites de análise: um por escala, só contorno (sem preenchimento).
 // Cada um aparece junto do escopo correspondente — é a unidade contra a qual
@@ -315,7 +315,7 @@ function pizza(grupos, total) {
   svg.querySelectorAll(".fatia").forEach(el => {
     const g = grupos[+el.dataset.i];
     liga(el, g.acao ? `${g.acao}<br><span style="color:#bbb">${g.risco}</span>`
-                    : "Prioridade Regular<br><span style='color:#bbb'>não apresentada no mapa</span>",
+                    : "Regular sem risco de aridez<br><span style='color:#bbb'>não apresentada no mapa</span>",
          g.v, total);
   });
   // 2 linhas por item: sem o risco, "Restauração Ecológica" apareceria duas vezes
@@ -351,7 +351,7 @@ function barraH(prios, total) {
      <text x="13" y="10" font-size="10.5" fill="#444">${p.nome}</text></g>`).join("");
   svg.querySelectorAll(".seg").forEach(el => {
     const p = prios[+el.dataset.i];
-    liga(el, p.nome || "Prioridade Regular<br><span style='color:#bbb'>não apresentada no mapa</span>",
+    liga(el, p.nome || "Regular sem risco de aridez<br><span style='color:#bbb'>não apresentada no mapa</span>",
          p.v, total);
   });
 }
@@ -396,7 +396,7 @@ function barraV(grupos, total) {
     const it = itens[+el.dataset.i];
     liga(el, it.prioridade
       ? `${it.prioridade}<br><span style="color:#bbb">${it.acao} / ${it.risco}</span>`
-      : "Prioridade Regular<br><span style='color:#bbb'>não apresentada no mapa</span>",
+      : "Regular sem risco de aridez<br><span style='color:#bbb'>não apresentada no mapa</span>",
       it.v, total);
   });
 }
@@ -465,7 +465,7 @@ function mostraDash(esc, cod, nomeFallback) {
     if (c.prioridade === "Muito Alta" || !g.cor) g.cor = c.cor;
   }
   const vOcultas = OCULTAS.reduce((s, cd) => s + (t.classes[cd] || 0), 0);
-  if (vOcultas) gs.push({ acao: "", risco: "", cor: SEM_NOME.cor, v: vOcultas });
+  if (vOcultas) gs.push({ acao: SEM_NOME.rotulo, risco: "", cor: SEM_NOME.cor, v: vOcultas });
   gs.forEach((g, i) => g.i = i);
   pizza(gs, total);
 
@@ -479,7 +479,7 @@ function mostraDash(esc, cod, nomeFallback) {
     { nome: "Muito Alta", cor: "#757575" },
     { nome: "Alta", cor: "#b0b0b0", claro: true },
     { nome: "Regular com risco de aridez", cor: "#ffdd81", claro: true, cds: ["XC"] },
-    { nome: "", cor: "none", cds: OCULTAS },
+    { nome: SEM_NOME.rotulo, cor: "none", cds: OCULTAS },
   ].map((p, i) => ({
     ...p, i,
     v: Object.entries(t.classes).reduce((s, [cd, v]) => s +
@@ -499,7 +499,7 @@ function mostraDash(esc, cod, nomeFallback) {
     g.itens.push({ cd: c.cd, v, cor: c.cor, prioridade: c.prioridade,
                    acao: c.acao, risco: c.risco_predominante });
   }
-  if (vOcultas) gv.push({ acao: "", risco: "",
+  if (vOcultas) gv.push({ acao: SEM_NOME.rotulo, risco: "",
     itens: [{ cd: "", v: vOcultas, cor: SEM_NOME.cor, prioridade: "", acao: "", risco: "" }] });
   barraV(gv, total);
 }
