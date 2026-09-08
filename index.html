@@ -84,7 +84,7 @@
     box-shadow:0 2px 8px rgba(0,0,0,.35);pointer-events:none;white-space:nowrap}
   #erro{position:absolute;top:10px;right:52px;z-index:2;background:#b00020;color:#fff;
     padding:8px 10px;border-radius:6px;max-width:340px;display:none;font-size:12px;white-space:pre-wrap}
-.tc-box{position:absolute;right:52px;top:0;width:342px;box-sizing:border-box;z-index:1;background:#fff;border-radius:8px;box-shadow:0 1px 6px rgba(0,0,0,.3);padding:6px 10px 8px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 14px}.tc-box span{flex:0 0 100%;font-size:9.5px;font-weight:700;letter-spacing:.03em;color:#555;text-align:center;line-height:1.2}.tc-box img{display:block;width:auto}.tc-mma{height:50px}.tc-ic{height:56px}@media(max-width:900px){.tc-box{display:none}}</style>
+.tc-box{position:absolute;right:52px;top:0;width:342px;max-width:calc(100vw - 24px);box-sizing:border-box;z-index:1;background:#fff;border-radius:8px;box-shadow:0 1px 6px rgba(0,0,0,.3);padding:6px 10px 8px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 14px}.tc-box span{flex:0 0 100%;font-size:9.5px;font-weight:700;letter-spacing:.03em;color:#555;text-align:center;line-height:1.2}.tc-box img{display:block;width:auto}.tc-mma{height:50px}.tc-ic{height:56px}</style>
 </head>
 <body>
 <div id="mapa"></div>
@@ -411,15 +411,23 @@ const NOME_ESCALA = { cerrado: "Bioma", rhi: "Região Hidrográfica", uph: "Unid
 function ajustaDash() {
   const p = document.querySelector(".painel").getBoundingClientRect();
   const dashEl = document.getElementById("dash");
-  dashEl.style.height = Math.round(p.height) + "px";
+  const tcEl = document.querySelector(".tc-box");
+  // Reservar a altura da caixa ANTES de dimensionar o dashboard: em tela baixa,
+  // copiar a altura do painel jogava a caixa para fora da janela (a página tem
+  // overflow:hidden, então ela simplesmente sumia).
+  let reserva = 0;
+  if (tcEl) { tcEl.style.width = Math.round(p.width) + "px"; reserva = tcEl.getBoundingClientRect().height + 8; }
+  const disponivel = window.innerHeight - 20 - reserva;
+  dashEl.style.height = Math.round(Math.max(120, Math.min(p.height, disponivel))) + "px";
   // A caixa do Termo encaixa logo abaixo do dashboard. Medir o DASH, não o
   // painel: a página não usa border-box, então a altura atribuída acima ganha
   // ainda os 20px de padding — usar p.bottom deixaria a caixa 12px por cima.
-  const tc = document.querySelector(".tc-box");
-  if (tc) {
+  if (tcEl) {
     const d = dashEl.getBoundingClientRect();
-    tc.style.top = Math.round(d.bottom + 8) + "px";
-    tc.style.width = Math.round(d.width) + "px";
+    const alt = tcEl.getBoundingClientRect().height;
+    const teto = window.innerHeight - alt - 10;          // nunca abaixo da dobra
+    tcEl.style.top = Math.round(Math.min(d.bottom + 8, teto)) + "px";
+    tcEl.style.width = Math.round(d.width) + "px";
   }
 }
 addEventListener("resize", ajustaDash);
