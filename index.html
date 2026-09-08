@@ -410,11 +410,17 @@ const NOME_ESCALA = { cerrado: "Bioma", rhi: "Região Hidrográfica", uph: "Unid
 // (que muda com o escopo) e do tamanho da janela.
 function ajustaDash() {
   const p = document.querySelector(".painel").getBoundingClientRect();
-  document.getElementById("dash").style.height = Math.round(p.height) + "px";
-  // a caixa do Termo encaixa logo abaixo, com a largura RENDERIZADA do painel
-  // (o webmap nao usa border-box: width:342px + padding = 366px reais)
+  const dashEl = document.getElementById("dash");
+  dashEl.style.height = Math.round(p.height) + "px";
+  // A caixa do Termo encaixa logo abaixo do dashboard. Medir o DASH, não o
+  // painel: a página não usa border-box, então a altura atribuída acima ganha
+  // ainda os 20px de padding — usar p.bottom deixaria a caixa 12px por cima.
   const tc = document.querySelector(".tc-box");
-  if (tc) { tc.style.top = Math.round(p.bottom + 8) + "px"; tc.style.width = Math.round(p.width) + "px"; }
+  if (tc) {
+    const d = dashEl.getBoundingClientRect();
+    tc.style.top = Math.round(d.bottom + 8) + "px";
+    tc.style.width = Math.round(d.width) + "px";
+  }
 }
 addEventListener("resize", ajustaDash);
 
