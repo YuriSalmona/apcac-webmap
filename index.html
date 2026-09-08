@@ -374,7 +374,7 @@ function barraV(grupos, total) {
         <span>${g.acao || "&nbsp;"}${g.risco ? ` <span class="risco-pred">/ ${g.risco}</span>` : ""}</span></div>
       ${g.itens.map(it => `<div class="vitem"><i style="background:${it.cor}${
         it.cor === "none" ? `;border:1px solid ${SEM_NOME.contorno}` : ""}"></i>
-        <span style="flex:1;min-width:0">${it.prioridade || "&nbsp;"}</span>
+        <span style="flex:1;min-width:0">${it.prioridade || "Regular"}</span>
         <b>${pct(it.v, total).toFixed(1)}%</b></div>`).join("")}
     </div>`;
   }).join("");
@@ -538,7 +538,14 @@ mapa.on("load", async () => {
       <ul>${g.itens.map(c =>
         `<li><span class="sw" style="background:${c.cor}"></span>${c.prioridade}</li>`).join("")}</ul>
     </div>`;
-  }).join("");
+  }).join("")
+  // As classes Regular sem risco de aridez não são pintadas, mas ocupam ~1/3 do
+  // bioma. Sem uma entrada na legenda, o leitor não tem como saber o que é a
+  // área em branco dentro do Cerrado — some do mapa E da explicação.
+  + `<div class="grupo">
+      <div class="grupo-cab"><span class="rampa" style="background:${SEM_NOME.cor};border-color:${SEM_NOME.contorno}"></span>
+        <span>${SEM_NOME.rotulo}<br><span class="risco-pred" style="white-space:normal;font-weight:400;font-size:10px">não apresentada no mapa</span></span></div>
+    </div>`;
 
   try {
     for (const s of ["cerrado", "rhi", "uph"]) {
