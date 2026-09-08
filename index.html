@@ -418,7 +418,11 @@ function ajustaDash() {
   let reserva = 0;
   if (tcEl) { tcEl.style.width = Math.round(p.width) + "px"; reserva = tcEl.getBoundingClientRect().height + 8; }
   const disponivel = window.innerHeight - 20 - reserva;
-  dashEl.style.height = Math.round(Math.max(120, Math.min(p.height, disponivel))) + "px";
+  // style.height é a altura de CONTEÚDO (a página não usa border-box), e os
+  // valores acima são de caixa: descontar os 20px de padding do dashboard,
+  // senão ele fica 20px mais alto e a caixa encosta nele.
+  const alvo = Math.max(140, Math.min(p.height, disponivel));
+  dashEl.style.height = Math.round(alvo - 20) + "px";
   // A caixa do Termo encaixa logo abaixo do dashboard. Medir o DASH, não o
   // painel: a página não usa border-box, então a altura atribuída acima ganha
   // ainda os 20px de padding — usar p.bottom deixaria a caixa 12px por cima.
