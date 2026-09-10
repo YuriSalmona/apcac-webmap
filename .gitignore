@@ -5,3 +5,6 @@
 *.gpkg
 *.tif
 .DS_Store
+_range_server.js
+_range_server.log
+_c.js

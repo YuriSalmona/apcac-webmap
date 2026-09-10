@@ -31,6 +31,9 @@
   /* amostra de linha: só o contorno, como a simbologia no mapa */
   .linha{width:14px;flex:none;border-top:2.5px solid;border-radius:1px}
   .leg{max-height:40vh;overflow:auto}
+  .risco-tg{display:flex;align-items:center;gap:6px;font-size:11.5px;color:#333;
+    margin:7px 0 0;padding-top:7px;border-top:1px solid #eee;cursor:pointer}
+  #risco-leg{max-height:none;margin-top:5px}
   .grupo{margin-bottom:8px}
   /* flex-start + margin no swatch: o cabeçalho agora quebra em 2 linhas
      ("Manejo do Solo e Reservação Hídrica / Risco de Aridez") e com
@@ -109,6 +112,8 @@
   </div>
   <p class="secao">Ação Prioritária / Risco Predominante</p>
   <div class="leg" id="leg"></div>
+  <label class="risco-tg"><input type="checkbox" id="tg-risco"> Mostrar risco predominante (hachura)</label>
+  <div class="leg" id="risco-leg" hidden></div>
   <p class="ressalva">A ausência de categoria sobre uma área, não significa falta de importância hidrológica.</p>
 </div>
 <div class="dash" id="dash">
@@ -160,7 +165,213 @@ const OPACIDADE = 0.7;            // 30% de transparência sobre o mapa de fundo
 // O filtro é POR ESCOPO: uma microbacia pode ser Regular no Cerrado e Alta na sua
 // UPH. Do dado só saíram as ocultas nos três escopos (nunca apareceriam);
 // as demais continuam nos tiles e são escondidas conforme o escopo ativo.
-const OCULTAS = ["IX", "IXR", "IIX", "IIXR"];
+// =====================================================================
+// PADRÃO DE COR — chave única "A" ou "B"
+// ---------------------------------------------------------------------
+// "A" = padrão do pôster A: cor = AÇÃO (matiz) × IMPORTÂNCIA (tom, 3 níveis).
+//       O "Comando e Controle" já vem mesclado em Proteção; o risco é mostrado
+//       pela camada de hachura (liga/desliga), não pela cor.
+// "B" = padrão do pôster B: cor = IMPORTÂNCIA em tons de azul; as classes
+//       regulares (X e a XC) ficam SEM cor (não pintadas).
+// Trocar esta constante troca, num ponto só: a expressão de cor de `detalhe`
+// (exprCor), o filtro (OCULTAS), a cor das classes usadas no dashboard e a
+// legenda (P.montaLegenda). Tudo é DERIVADO do código da classe (cd_<esc>).
+const PADRAO_COR = "A";
+
+// Regulares nunca pintadas em nenhum padrão (as ocultas dos 3 escopos).
+const REGULARES = ["IX", "IXR", "IIX", "IIXR"];
+
+// ---- Derivação a partir do código da classe (o mesmo de cd_<esc>) -----------
+// Risco predominante:
+//   desmatamento : IA,IAR,IB,IBR,IC,ICR        (prefixo "I", não "II")
+//   degradacao   : IIAR,IIBR,IICR              (prefixo "II" + sufixo "R")
+//   aridez       : IIAC,IIBC,IICC, XC          (sufixo "C" no II, e a XC)
+//   padrao       : IIA,IIB,IIC                 (II, sem sufixo)
+//   regular      : IX,IXR,IIX,IIXR             (não pintadas)
+function riscoDe(cd) {
+  if (REGULARES.includes(cd)) return "regular";
+  if (cd === "XC")            return "aridez";
+  if (/^I[ABC]R?$/.test(cd))  return "desmatamento";
+  if (/^II[ABC]R$/.test(cd))  return "degradacao";
+  if (/^II[ABC]C$/.test(cd))  return "aridez";
+  if (/^II[ABC]$/.test(cd))   return "padrao";
+  return "regular";
+}
+// Importância (letra): A=Extremamente alta, B=Muito alta, C=Alta, X=Regular.
+function impDe(cd) {
+  if (["IA", "IAR", "IIA", "IIAR", "IIAC"].includes(cd)) return "A";
+  if (["IB", "IBR", "IIB", "IIBR", "IIBC"].includes(cd)) return "B";
+  if (["IC", "ICR", "IIC", "IICR", "IICC"].includes(cd)) return "C";
+  return "X";   // IX, IXR, IIX, IIXR, XC
+}
+// Ação prioritária (padrão A), com Comando e Controle já mesclado em Proteção.
+function acaoDe(cd) {
+  switch (riscoDe(cd)) {
+    case "desmatamento": return "Proteção";
+    case "degradacao":
+    case "padrao":       return "Restauração Ecológica";
+    case "aridez":       return cd === "XC" ? "Conjunto de Ações Diversas" : "Manejo e Reservação";
+    default:             return null;   // regular
+  }
+}
+const IMP_LABEL = { A: "Extremamente alta", B: "Muito alta", C: "Alta" };
+
+// Paleta A: matiz por ação, tom por importância (idêntica ao pôster A).
+const TOM_A = {
+  "Proteção":                   { A: "#1c4942", B: "#2e8b4f", C: "#6fbf73" },
+  "Restauração Ecológica":      { A: "#1f3a70", B: "#376ea0", C: "#6fb0cf" },
+  "Manejo e Reservação":        { A: "#e07d00", B: "#ff9d1c", C: "#ffc879" },
+  "Conjunto de Ações Diversas": { X: "#ffe6a3" }
+};
+function corA(cd) {
+  const a = acaoDe(cd);
+  if (!a) return "none";                 // regulares não pintadas
+  const t = TOM_A[a];
+  return t[impDe(cd)] || t.X || "none";
+}
+// Paleta B: importância em tons de azul (idêntica ao pôster B). X (inclui XC) -> sem cor.
+const TOM_B = { A: "#08306b", B: "#2f6fb0", C: "#8cc0e0" };
+function corB(cd) { return TOM_B[impDe(cd)] || "none"; }
+
+// ---- Configuração do padrão ativo -------------------------------------------
+// ocultas = classes NÃO pintadas neste padrão (entram no filtro e viram a fatia
+// "sem nome" no dashboard). montaLegenda = renderizador do painel de legenda.
+const PADROES = {
+  A: { ocultas: REGULARES,                cor: corA, montaLegenda: legendaA },
+  B: { ocultas: REGULARES.concat(["XC"]), cor: corB, montaLegenda: legendaB }
+};
+const P = PADROES[PADRAO_COR] || PADROES.A;
+// OCULTAS = regulares NUNCA apresentadas (igual nos dois padrões) — é o que o
+// dashboard usa para separar a fatia "sem nome"; não muda com o padrão para não
+// contar a XC duas vezes na barra de prioridade.
+const OCULTAS = REGULARES;
+// NAO_PINTA = classes que ESTE padrão não pinta no MAPA vetorial. Em A são só as
+// regulares; em B soma a XC (que fica sem cor). Usado só no filtro do mapa.
+const NAO_PINTA = P.ocultas;
+
+// cor para a expressão de fill do MapLibre: "none" -> transparente (a classe
+// já sai pelo filtro, mas o "match" exige uma cor válida em toda saída).
+const corMapa = cd => { const c = P.cor(cd); return c === "none" ? "rgba(0,0,0,0)" : c; };
+
+// ---- RISCO (camada de hachura liga/desliga) ---------------------------------
+// Os códigos de cada risco, para escolher o sprite via "match".
+const RISCO_CDS = {
+  desmatamento: ["IA", "IAR", "IB", "IBR", "IC", "ICR"],
+  degradacao:   ["IIAR", "IIBR", "IICR"],
+  aridez:       ["IIAC", "IIBC", "IICC", "XC"]
+};
+// A camada de risco vem do `risco.pmtiles` (tiles próprios, z3-10): cada feição
+// já traz a propriedade `risco` e `escala`. O sprite é escolhido pela propriedade
+// `risco` (não depende da escala); a escala é aplicada por FILTRO.
+function exprRisco() {
+  return ["match", ["get", "risco"],
+    "desmatamento", "hach_desmatamento",
+    "degradacao",   "hach_degradacao",
+    "aridez",       "hach_aridez",
+    "hach_vazio"];
+}
+// Sprites de hachura gerados por canvas (8×8, ladrilháveis). Guarda também um
+// dataURL de cada um para reaproveitar como amostra na legenda.
+const HACH_URL = {};
+function fazHachura(nome, desenha, tam = 8) {
+  const cv = document.createElement("canvas");
+  cv.width = cv.height = tam;
+  const ctx = cv.getContext("2d");
+  desenha(ctx, tam);
+  HACH_URL[nome] = cv.toDataURL();
+  const img = ctx.getImageData(0, 0, tam, tam);
+  if (mapa.hasImage(nome)) mapa.removeImage(nome);
+  mapa.addImage(nome, img, { pixelRatio: 1 });
+}
+function geraHachuras() {
+  const cor = "rgba(30,30,30,.9)";
+  fazHachura("hach_vazio", () => {}, 4);                    // transparente
+  fazHachura("hach_desmatamento", (c, t) => {              // diagonais
+    c.strokeStyle = cor; c.lineWidth = 1.3;
+    for (let i = -t; i < t * 2; i += 4) { c.beginPath(); c.moveTo(i, 0); c.lineTo(i + t, t); c.stroke(); }
+  });
+  fazHachura("hach_degradacao", (c, t) => {                // horizontais tracejadas
+    c.strokeStyle = cor; c.lineWidth = 1.2; c.setLineDash([2, 2]);
+    [1.5, 5.5].forEach(y => { c.beginPath(); c.moveTo(0, y); c.lineTo(t, y); c.stroke(); });
+  });
+  fazHachura("hach_aridez", (c, t) => {                    // pontilhado
+    c.fillStyle = cor;
+    for (let x = 1; x < t; x += 4) for (let y = 1; y < t; y += 4) c.fillRect(x, y, 1.4, 1.4);
+  });
+}
+// Legenda do risco (comum aos dois padrões; visível junto com o toggle).
+function montaLegendaRisco() {
+  const itens = [
+    ["Desmatamento", "hach_desmatamento"],
+    ["Degradação do solo", "hach_degradacao"],
+    ["Aridez", "hach_aridez"]
+  ];
+  document.getElementById("risco-leg").innerHTML =
+    `<p class="secao" style="margin:0 0 4px">Risco predominante (hachura)</p>` +
+    `<ul style="margin:0;padding:0;list-style:none">` +
+    itens.map(([r, n]) =>
+      `<li style="display:flex;align-items:center;gap:6px;padding:1px 0;font-size:11px">
+         <span class="sw" style="background:#fff;background-image:url(${HACH_URL[n]});background-repeat:repeat;image-rendering:pixelated"></span>${r}</li>`).join("") +
+    `</ul>`;
+}
+
+// ---- Renderizadores de legenda por padrão -----------------------------------
+// Bloco "Regular sem cor", comum aos dois padrões.
+const grupoRegular = () => `<div class="grupo">
+    <div class="grupo-cab"><span class="rampa" style="background:${SEM_NOME.cor};border-color:${SEM_NOME.contorno}"></span>
+      <span>${SEM_NOME.rotulo}</span></div>
+  </div>`;
+
+// Padrão A: grupos de ação (matiz) com tons por importância.
+function legendaA() {
+  const grupos = [
+    { acao: "Proteção",              risco: "Risco de Desmatamento" },
+    { acao: "Restauração Ecológica", risco: "Degradação do solo / Padrão" },
+    { acao: "Manejo e Reservação",   risco: "Risco de Aridez" }
+  ];
+  let html = grupos.map(g => {
+    const t = TOM_A[g.acao], cores = [t.A, t.B, t.C];
+    const rampa = `linear-gradient(90deg, ${cores.join(",")})`;
+    return `<div class="grupo">
+      <div class="grupo-cab"><span class="rampa" style="background:${rampa}"></span>
+        <span>${g.acao} <span class="risco-pred">/ ${g.risco}</span></span></div>
+      <ul>${["A", "B", "C"].map(k =>
+        `<li><span class="sw" style="background:${t[k]}"></span>${IMP_LABEL[k]}</li>`).join("")}</ul>
+    </div>`;
+  }).join("");
+  const xc = TOM_A["Conjunto de Ações Diversas"].X;
+  html += `<div class="grupo">
+      <div class="grupo-cab"><span class="rampa" style="background:${xc}"></span>
+        <span>Conjunto de Ações Diversas <span class="risco-pred">/ Risco de Aridez</span></span></div>
+      <ul><li><span class="sw" style="background:${xc}"></span>Regular com risco de aridez</li></ul>
+    </div>`;
+  html += grupoRegular();
+  document.getElementById("leg").innerHTML = html;
+}
+
+// Padrão B: rampa azul de importância + tabela risco -> ação (sem "Padrão").
+function legendaB() {
+  const cores = [TOM_B.A, TOM_B.B, TOM_B.C];
+  const rampa = `linear-gradient(90deg, ${cores.join(",")})`;
+  let html = `<div class="grupo">
+      <div class="grupo-cab"><span class="rampa" style="background:${rampa}"></span>
+        <span>Importância hidrológica</span></div>
+      <ul>${["A", "B", "C"].map(k =>
+        `<li><span class="sw" style="background:${TOM_B[k]}"></span>${IMP_LABEL[k]}</li>`).join("")}</ul>
+    </div>`;
+  const rel = [
+    ["Desmatamento", "Proteção"],
+    ["Degradação do solo", "Restauração Ecológica"],
+    ["Aridez", "Manejo e Reservação"]
+  ];
+  html += `<div class="grupo">
+      <div class="grupo-cab"><span>Ação recomendada por risco</span></div>
+      <ul>${rel.map(([r, a]) =>
+        `<li style="display:block;padding-left:0">${r} &rarr; <b>${a}</b></li>`).join("")}</ul>
+    </div>`;
+  html += grupoRegular();
+  document.getElementById("leg").innerHTML = html;
+}
 // As classes acima não são pintadas no mapa mas ocupam ~27% do território.
 // No dashboard elas viram UMA categoria só, sem preenchimento e sem nome —
 // para os gráficos somarem 100% sem sugerir uma ação prioritária que não existe.
@@ -245,28 +456,35 @@ let estat = null;
 
 function exprCor(esc) {
   const e = ["match", ["get", "cd_" + esc]];
-  for (const c of legenda) e.push(c.cd, c.cor);
+  for (const c of legenda) e.push(c.cd, corMapa(c.cd));
   e.push("#cccccc");
   return e;
 }
 
-// esconde as Regular do escopo ativo (o raster de cada escopo já vem sem as suas)
+// esconde do MAPA as classes que o padrão não pinta (regulares; em B também a XC).
+// O raster de cada escopo já vem sem as regulares.
 const filtroEscopo = esc =>
-  ["!", ["in", ["get", "cd_" + esc], ["literal", OCULTAS]]];
+  ["!", ["in", ["get", "cd_" + esc], ["literal", NAO_PINTA]]];
 
 function aplicaEscopo(esc) {
   escopo = esc;
   for (const s of ["cerrado", "rhi", "uph"]) {
     const v = s === esc ? "visible" : "none";
-    for (const pre of ["r_", "lim_", "alvo_", "sel_"])
+    for (const pre of ["lim_", "alvo_", "sel_"])
       mapa.setLayoutProperty(pre + s, "visibility", v);
   }
+  // base (padrão A/B, tiles vetoriais únicos) acompanha a escala pelo FILTRO
+  if (mapa.getLayer("base"))
+    mapa.setFilter("base", ["==", ["get", "escala"], esc]);
   // a seleção pertence à escala anterior; o território é outro
   mapa.setFilter("sel_" + esc, ["==", ["get", "cod"], "__nenhum__"]);
   limpaDash();
   mapa.setPaintProperty("detalhe", "fill-color", exprCor(esc));
   mapa.setFilter("detalhe", filtroEscopo(esc));
   mapa.setFilter("detalhe_borda", filtroEscopo(esc));
+  // camada de risco (hachura, tiles próprios z3-10): acompanha a escala pelo FILTRO
+  if (mapa.getLayer("risco"))
+    mapa.setFilter("risco", ["==", ["get", "escala"], esc]);
   const L = LIMITES[esc];
   document.getElementById("limite").innerHTML =
     `<span class="linha" style="border-top-color:${L.cor}"></span>${L.rotulo}`;
@@ -530,7 +748,7 @@ function mostraDash(esc, cod, nomeFallback) {
 
 function mostraEstado() {
   const z = mapa.getZoom();
-  estado(`zoom ${z.toFixed(1)} — ${z < ZOOM_DETALHE ? "visão geral (raster)" : "detalhe (vetorial, clicável)"}`);
+  estado(`zoom ${z.toFixed(1)} — ${z < ZOOM_DETALHE ? "visão geral" : "detalhe (vetorial, clicável)"}`);
 }
 
 mapa.on("load", async () => {
@@ -540,46 +758,27 @@ mapa.on("load", async () => {
     estat = await pEstat;
   } catch (e) { return erro("Falha ao carregar os dados de apoio: " + e.message); }
 
-  // agrupa por Ação Prioritária + Risco Predominante (a mesma ação pode aparecer
-  // em dois grupos: Restauração Ecológica se divide em degradação do solo e padrão),
-  // preservando a ordem definida no legenda.json
-  const grupos = [];
-  // grupos que ficarem sem classe visível somem da legenda
-  for (const c of legenda.filter(c => !OCULTAS.includes(c.cd))) {
-    const chave = c.acao + " / " + c.risco_predominante;
-    let g = grupos.find(x => x.chave === chave);
-    if (!g) grupos.push(g = { chave, acao: c.acao, risco: c.risco_predominante, itens: [] });
-    g.itens.push(c);
-  }
-  document.getElementById("leg").innerHTML = grupos.map(g => {
-    const cores = g.itens.map(c => c.cor);
-    // amostra da rampa do grupo: do tom mais escuro ao mais claro
-    const rampa = cores.length > 1
-      ? `linear-gradient(90deg, ${cores.join(",")})` : cores[0];
-    return `<div class="grupo">
-      <div class="grupo-cab"><span class="rampa" style="background:${rampa}"></span>
-        <span>${g.acao} <span class="risco-pred">/ ${g.risco}</span></span></div>
-      <ul>${g.itens.map(c =>
-        `<li><span class="sw" style="background:${c.cor}"></span>${c.prioridade}</li>`).join("")}</ul>
-    </div>`;
-  }).join("")
-  // As classes Regular sem risco de aridez não são pintadas, mas ocupam ~1/3 do
-  // bioma. Sem uma entrada na legenda, o leitor não tem como saber o que é a
-  // área em branco dentro do Cerrado — some do mapa E da explicação.
-  + `<div class="grupo">
-      <div class="grupo-cab"><span class="rampa" style="background:${SEM_NOME.cor};border-color:${SEM_NOME.contorno}"></span>
-        <span>${SEM_NOME.rotulo}</span></div>
-    </div>`;
+  // Cor de cada classe derivada do CÓDIGO, conforme o padrão ativo (A/B). Assim
+  // o dashboard (pizza/barras) acompanha a mesma paleta do mapa; as classes que
+  // este padrão não pinta ficam "none" e caem na fatia "sem nome".
+  for (const c of legenda) c.cor = P.cor(c.cd);
+
+  // Sprites de hachura do risco (o mapa já está carregado -> addImage é seguro).
+  geraHachuras();
+
+  // Legenda derivada do padrão num ÚNICO ponto, mais a legenda do risco.
+  P.montaLegenda();
+  montaLegendaRisco();
 
   try {
-    for (const s of ["cerrado", "rhi", "uph"]) {
-      mapa.addSource("s_" + s, { type: "raster", url: `pmtiles://${BASE}${s}_raster.pmtiles`, tileSize: 256 });
-      mapa.addLayer({
-        id: "r_" + s, type: "raster", source: "s_" + s, maxzoom: ZOOM_DETALHE,
-        layout: { visibility: s === "cerrado" ? "visible" : "none" },
-        paint: { "raster-resampling": "nearest", "raster-opacity": OPACIDADE }
-      });
-    }
+    // BASE (padrão A/B): tiles VETORIAIS próprios (z3-10), a cor já vem na feição.
+    // Substitui os rasters antigos e acompanha a escala pelo FILTRO (escala).
+    mapa.addSource("s_base", { type: "vector", url: `pmtiles://${BASE}base_${PADRAO_COR}.pmtiles` });
+    mapa.addLayer({
+      id: "base", type: "fill", source: "s_base", "source-layer": "base", maxzoom: ZOOM_DETALHE,
+      filter: ["==", ["get", "escala"], "cerrado"],
+      paint: { "fill-color": ["get", "cor"], "fill-opacity": OPACIDADE }
+    });
     mapa.addSource("s_det", { type: "vector", url: `pmtiles://${BASE}apcac_detalhe.pmtiles` });
     mapa.addLayer({
       id: "detalhe", type: "fill", source: "s_det", "source-layer": "apcac", minzoom: ZOOM_DETALHE,
@@ -592,6 +791,15 @@ mapa.on("load", async () => {
       id: "detalhe_borda", type: "line", source: "s_det", "source-layer": "apcac",
       minzoom: ZOOM_DETALHE, filter: filtroEscopo("cerrado"),
       paint: { "line-color": "rgba(0,0,0,.25)", "line-width": 0.4 }
+    });
+    // RISCO: hachura por risco predominante, em tiles próprios (z3-10) — aparece
+    // em TODOS os zooms. Filtra pela escala ativa; inicia DESLIGADO.
+    mapa.addSource("s_risco", { type: "vector", url: `pmtiles://${BASE}risco.pmtiles` });
+    mapa.addLayer({
+      id: "risco", type: "fill", source: "s_risco", "source-layer": "risco",
+      minzoom: 3, filter: ["==", ["get", "escala"], "cerrado"],
+      layout: { visibility: "none" },
+      paint: { "fill-pattern": exprRisco(), "fill-opacity": 1 }
     });
 
     // Limites de análise. O tileset traz POLÍGONOS: o `fill` invisível serve de
@@ -664,6 +872,15 @@ document.querySelectorAll(".escopos button[data-e]")
   .forEach(b => b.onclick = () => { if (legenda.length) aplicaEscopo(b.dataset.e); });
 document.querySelectorAll("#fundos button")
   .forEach(b => b.onclick = () => aplicaFundo(b.dataset.f));
+
+// Liga/desliga a camada de risco (hachura). A camada só existe após o load e só
+// aparece no zoom de detalhe; a legenda do risco acompanha o toggle.
+document.getElementById("tg-risco").addEventListener("change", e => {
+  const on = e.target.checked;
+  if (mapa.getLayer("risco"))
+    mapa.setLayoutProperty("risco", "visibility", on ? "visible" : "none");
+  document.getElementById("risco-leg").hidden = !on;
+});
 </script>
 </body>
 </html>
