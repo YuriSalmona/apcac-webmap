@@ -52,7 +52,7 @@
   "risco": null,
   "rotulo": "Predominância natural, importância hidrológica extremamente alta",
   "acao": "Proteção",
-  "risco_predominante": "Risco de Desmatamento"
+  "risco_predominante": "Sem risco predominante"
  },
  {
   "cd": "IB",
@@ -63,7 +63,7 @@
   "risco": null,
   "rotulo": "Predominância natural, importância hidrológica muito alta",
   "acao": "Proteção",
-  "risco_predominante": "Risco de Desmatamento"
+  "risco_predominante": "Sem risco predominante"
  },
  {
   "cd": "IC",
@@ -74,7 +74,7 @@
   "risco": null,
   "rotulo": "Predominância natural, importância hidrológica alta",
   "acao": "Proteção",
-  "risco_predominante": "Risco de Desmatamento"
+  "risco_predominante": "Sem risco predominante"
  },
  {
   "cd": "IX",
@@ -140,7 +140,7 @@
   "risco": null,
   "rotulo": "Predominância antrópica, importância hidrológica extremamente alta",
   "acao": "Restauração Ecológica",
-  "risco_predominante": "Risco Padrão"
+  "risco_predominante": "Sem risco predominante"
  },
  {
   "cd": "IIB",
@@ -151,7 +151,7 @@
   "risco": null,
   "rotulo": "Predominância antrópica, importância hidrológica muito alta",
   "acao": "Restauração Ecológica",
-  "risco_predominante": "Risco Padrão"
+  "risco_predominante": "Sem risco predominante"
  },
  {
   "cd": "IIC",
@@ -162,7 +162,7 @@
   "risco": null,
   "rotulo": "Predominância antrópica, importância hidrológica alta",
   "acao": "Restauração Ecológica",
-  "risco_predominante": "Risco Padrão"
+  "risco_predominante": "Sem risco predominante"
  },
  {
   "cd": "IIX",

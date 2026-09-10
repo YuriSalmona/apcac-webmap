@@ -334,7 +334,7 @@ function legendaA() {
     const rampa = `linear-gradient(90deg, ${cores.join(",")})`;
     return `<div class="grupo">
       <div class="grupo-cab"><span class="rampa" style="background:${rampa}"></span>
-        <span>${g.acao} <span class="risco-pred">/ ${g.risco}</span></span></div>
+        <span>${g.acao}</span></div>
       <ul>${["A", "B", "C"].map(k =>
         `<li><span class="sw" style="background:${t[k]}"></span>${IMP_LABEL[k]}</li>`).join("")}</ul>
     </div>`;
@@ -342,7 +342,7 @@ function legendaA() {
   const xc = TOM_A["Conjunto de Ações Diversas"].X;
   html += `<div class="grupo">
       <div class="grupo-cab"><span class="rampa" style="background:${xc}"></span>
-        <span>Conjunto de Ações Diversas <span class="risco-pred">/ Risco de Aridez</span></span></div>
+        <span>Conjunto de Ações Diversas</span></div>
       <ul><li><span class="sw" style="background:${xc}"></span>Regular com risco de aridez</li></ul>
     </div>`;
   html += grupoRegular();
